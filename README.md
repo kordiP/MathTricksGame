@@ -1,0 +1,2 @@
+# MathTricksGame
+Board Game "MathTricks"
