@@ -1,6 +1,7 @@
-#include <cstdlib>
-#include <ctime> // rng seed
+#include <cmath>
 #include <iostream> // console io
+#include <iomanip>
+#include <random>
 #include <windows.h> // console colors
 
 using namespace std;
@@ -30,10 +31,12 @@ void initializeGrid(int rows, int cols);
 void deleteGrid(int rows);
 char intToChar(int input);
 void generateGameSeed();
-Cell generateCell(int curRow, int curCol);
+Cell generateCell(int curRow, int curCol, char symbol = '=', int value = -1);
 void getFieldSize(int& rows, int& columns);
 void clearConsole();
 void clearInputBuffer();
+void printGrid();
+int generateTrulyRandomNumber(int lowLimit, int highLimit);
 
 enum StartMenuOptions
 {
@@ -48,6 +51,30 @@ struct Cell
 	char SteppedOnBy = CellNotSteppedOn;
 	int ColorValue = TextWhite;
 };
+
+struct Player
+{
+	double Points;
+	int ColorValue;
+	// Cell CurrentCell;
+};
+
+void printGrid()
+{
+	for (int i = 0; i < sizeRows; i++)
+	{
+		for (int j = 0; j < sizeColumns * 4; j++) cout << "_";
+
+		cout << "\n";
+
+		for (int j = 0; j < sizeColumns; j++)
+		{
+			cout << grid[i][j].Symbol << grid[i][j].Value << grid[i][j].SteppedOnBy << " ";
+		}
+
+		cout << "\n";
+	}
+}
 
 void clearConsole() {
 	cout << "\033[;H";
@@ -109,12 +136,13 @@ void generateGameSeed()
 			grid[i][j] = generateCell(i, j);
 		}
 	}
+
+
 }
 
-Cell generateCell(int curRow, int curCol, char symbol = '+', int value = -1)
+Cell generateCell(int curRow, int curCol, char symbol, int value)
 {
-	srand(time(0));
-	Cell cell;
+	Cell cell = {};
 
 	if (curRow == 0 && curCol == 0)
 	{
@@ -126,14 +154,47 @@ Cell generateCell(int curRow, int curCol, char symbol = '+', int value = -1)
 		return cell;
 	}
 
-	int maxValue = max(sizeRows, sizeColumns);
+	else if (symbol != '=' || value != -1)
+	{
+		cell = { symbol, abs(value) };
+		return cell;
+	}
 
-	char operation = OperationSymbols[rand() % OperationsCount];
-	int value = rand() % maxValue;
+	int minValueRan = 0;
+	int maxValueRan = max(sizeRows, sizeColumns);
 
-	cell = { operation, value };
+	char operation = OperationSymbols[generateTrulyRandomNumber(0, OperationsCount - 1)];
+
+	if (operation == '*')
+	{
+		maxValueRan = min(sizeRows, sizeColumns) / 2;
+	}
+
+	if (operation == '/')
+	{
+		minValueRan = 2;
+		maxValueRan = min(sizeRows, sizeColumns) / 2;
+	}
+
+	int cellValue = generateTrulyRandomNumber(minValueRan, maxValueRan);
+
+	cell = { operation, cellValue };
 
 	return cell;
+}
+
+int generateTrulyRandomNumber(int lowLimit, int highLimit)
+{
+	if (lowLimit >= highLimit)
+	{
+		return lowLimit;
+	}
+
+	random_device rdNum;
+	mt19937 genNum(rdNum());
+	uniform_int_distribution<> distNum(lowLimit, highLimit);
+
+	return distNum(genNum);
 }
 
 void getFieldSize(int& rows, int& columns)
@@ -151,7 +212,7 @@ void getFieldSize(int& rows, int& columns)
 	cout << "Enter the number of columns for the field: \n";
 	do
 	{
-		cout << "Range: 4 to 12. \n";
+		cout << "Range: " << FieldSizeMin << " to " << FieldSizeMax << "\n";
 		cin >> columns;
 	} while (cin.fail() || rows < FieldSizeMin || rows > FieldSizeMax);
 	cin.clear();
@@ -179,6 +240,8 @@ int main()
 		return 0;
 		break;
 	}
+
+	printGrid();
 
 	deleteGrid(sizeRows);
 }
