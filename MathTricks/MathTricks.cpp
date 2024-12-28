@@ -14,29 +14,33 @@ int sizeColumns;
 const int OperationsCount = 4;
 const char OperationSymbols[] = { '+', '-', '*', '/' };
 
-const char CellSeperator = '_';
-const char CellNotSteppedOn = 'N';
-const char CellSteppedOnByA = 'A';
-const char CellSteppedOnByB = 'B';
-
-const int TextWhite = 15;
+const int ColorBlack = 0;
+const int ColorBlue = 9;
+const int ColorGreen = 10;
+const int ColorYellow = 14;
+const int ColorWhite = 15;
 
 enum StartMenuOptions;
 struct Cell;
+struct Player;
 
 Cell** grid = nullptr;
-
+// to-do: write abs, min, max and strcopy functions
 void showStartMenu();
 void initializeGrid(int rows, int cols);
 void deleteGrid(int rows);
-void generateGameSeed();
+void generateGameField();
 Cell generateCell(char symbol = '=', int value = -1);
 void getFieldSize(int& rows, int& columns);
 void clearConsole();
 void clearInputBuffer();
 void printGrid();
-int generateTrulyRandomNumber(int lowLimit, int highLimit);
+int genRandomNum(int lowLimit, int highLimit);
 void generateNeccessaryCells();
+void initializePlayers();
+bool movePlayerIfPossible(Player& player, int rowTo, int colTo);
+bool playerHasValidMoves(Player player);
+bool isValidPlayerMove(Player player, int rowTo, int colTo);
 
 enum StartMenuOptions
 {
@@ -46,21 +50,37 @@ enum StartMenuOptions
 
 struct Cell
 {
-	char Symbol = OperationSymbols[0];
-	int Value = -1;
-	char SteppedOnBy = CellNotSteppedOn;
-	int ColorValue = TextWhite;
+	char Symbol = '+'; // Which operation we will apply to the player's points
+	int Value = -1; // The numeric value for the operation
+
+	int ColorValue = ColorWhite; // What color should we color the cell
+	bool SteppedOn = false; // If it has been stepped on
 };
 
 struct Player
 {
-	double Points;
-	int ColorValue;
-	// Cell CurrentCell;
+	int ColorAttribute; // Player individual color: foreground + 16 * background
+
+	char Name[20]; // Not chosen by player, assigned by default
+	double Points = 0.0; // Current player score
+	int CurRow; // Current row of the player
+	int CurColumn; // Current column of the player
 };
 
-void printGrid()
+Player playerA = {};
+Player playerB = {};
+
+void printGrid() // make it so it's colored everytime, based on the cell's color value
 {
+	HANDLE hConsole;
+	hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
+
+	/*
+		<in loop>
+			SetConsoleTextAttribute(hConsole, ColorValue);
+	*/
+
+
 	for (int i = 0; i < sizeRows; i++)
 	{
 		for (int j = 0; j < sizeColumns * 4; j++) cout << "_";
@@ -69,7 +89,7 @@ void printGrid()
 
 		for (int j = 0; j < sizeColumns; j++)
 		{
-			cout << grid[i][j].Symbol << grid[i][j].Value << grid[i][j].SteppedOnBy << " ";
+			cout << grid[i][j].Symbol << grid[i][j].Value << " ";
 		}
 
 		cout << "\n";
@@ -115,7 +135,7 @@ void deleteGrid(int rows) {
 	delete[] grid;
 }
 
-void generateGameSeed()
+void generateGameField()
 {
 	initializeGrid(sizeRows, sizeColumns);
 
@@ -128,6 +148,124 @@ void generateGameSeed()
 			if (grid[i][j].Value == -1) grid[i][j] = generateCell();
 		}
 	}
+
+	initializePlayers();
+}
+
+void initializePlayers() // hardcoded the init
+{
+	playerA.ColorAttribute = ColorYellow + 16 * ColorBlue;
+	playerA.CurRow = 0;
+	playerA.CurColumn = 0;
+	strcpy_s(playerA.Name, "Player 1 (blue)");
+	grid[playerA.CurRow][playerA.CurColumn].SteppedOn = true;
+	grid[playerA.CurRow][playerA.CurColumn].ColorValue = playerA.ColorAttribute;
+
+	playerB.ColorAttribute = ColorYellow + 16 * ColorGreen;
+	playerB.CurRow = sizeRows - 1;
+	playerB.CurColumn = sizeColumns - 1;
+	strcpy_s(playerB.Name, "Player 2 (green)");
+	grid[playerB.CurRow][playerB.CurColumn].SteppedOn = true;
+	grid[playerB.CurRow][playerB.CurColumn].ColorValue = playerB.ColorAttribute;
+}
+
+bool movePlayerIfPossible(Player& player, int rowTo, int colTo)
+{
+	if (!isValidPlayerMove(player, rowTo, colTo))
+	{
+		return false;
+	}
+	
+	int& curRow = player.CurRow;
+	int& curCol = player.CurColumn;
+
+	int diffRow = rowTo - curRow;
+	int diffCol = colTo - curCol;
+
+	grid[curRow][curCol].ColorValue -= ColorYellow;
+
+	curRow += diffRow;
+	curCol += diffCol;
+
+	Cell& curCell = grid[curRow][curCol];
+
+	curCell.SteppedOn = true;
+	curCell.ColorValue = player.ColorAttribute;
+
+	switch (curCell.Symbol)
+	{
+	case '+':
+		player.Points += curCell.Value;
+		break;
+	case '-':
+		player.Points -= curCell.Value;
+		break;
+	case '*':
+		player.Points *= curCell.Value;
+		break;
+	case '/':
+		player.Points /= curCell.Value;
+		break;
+	}
+
+	return true;
+}
+
+bool playerHasValidMoves(Player player)
+{
+	int curRow = player.CurRow;
+	int curCol = player.CurColumn;
+
+	int countValid = 0;
+
+	for (int i = -1; i <= 1; i++)
+	{
+		for (int j = -1; j <= 1; j++)
+		{
+			if (isValidPlayerMove(player, curRow + i, curCol + j))
+			{
+				countValid++;
+			}
+		}
+	}
+
+	return countValid;
+}
+
+bool isValidPlayerMove(Player player, int rowTo, int colTo)
+{
+	if (rowTo >= sizeRows || rowTo < 0)
+	{
+		return false;
+	}
+
+	if (colTo >= sizeColumns || colTo < 0)
+	{
+		return false;
+	}
+
+	int curRow = player.CurRow;
+	int curCol = player.CurColumn;
+
+	int diffRow = rowTo - curRow;
+	int diffCol = colTo - curCol;
+
+	if (abs(diffRow) > 1 || abs(diffCol) > 1)
+	{
+		return false;
+	}
+
+	if (diffRow == 0 && diffCol == 0)
+	{
+		return false;
+	}
+
+	if (grid[rowTo][colTo].SteppedOn)
+	{
+		return false;
+	}
+
+	return true;
 }
 
 void generateNeccessaryCells()
@@ -140,7 +278,7 @@ void generateNeccessaryCells()
 	Cell addOne = generateCell('+', 1);
 	Cell subOne = generateCell('-', 1);
 
-	Cell specials[] = { multZero, multTwo, divTwo, addOne, subOne };
+	Cell neccessaryCells[] = { multZero, multTwo, divTwo, addOne, subOne };
 
 	grid[0][0] = zeroCell;
 	grid[sizeRows - 1][sizeColumns - 1] = zeroCell;
@@ -149,15 +287,15 @@ void generateNeccessaryCells()
 
 	while (neccessaryCellsCount > 0)
 	{
-		int ranRow = generateTrulyRandomNumber(0, sizeRows - 1);
-		int ranCol = generateTrulyRandomNumber(0, sizeColumns - 1);
+		int ranRow = genRandomNum(0, sizeRows - 1);
+		int ranCol = genRandomNum(0, sizeColumns - 1);
 
 		if (grid[ranRow][ranCol].Value != -1)
 		{
 			continue;
 		}
 
-		grid[ranRow][ranCol] = specials[--neccessaryCellsCount];
+		grid[ranRow][ranCol] = neccessaryCells[--neccessaryCellsCount];
 	}
 }
 
@@ -174,7 +312,7 @@ Cell generateCell(char symbol, int value)
 	int minValueRan = 0;
 	int maxValueRan = max(sizeRows, sizeColumns);
 
-	char operation = OperationSymbols[generateTrulyRandomNumber(0, OperationsCount - 1)];
+	char operation = OperationSymbols[genRandomNum(0, OperationsCount - 1)];
 
 	if (operation == '*')
 	{
@@ -187,14 +325,14 @@ Cell generateCell(char symbol, int value)
 		maxValueRan = min(sizeRows, sizeColumns) / 2;
 	}
 
-	int cellValue = generateTrulyRandomNumber(minValueRan, maxValueRan);
+	int cellValue = genRandomNum(minValueRan, maxValueRan);
 
 	cell = { operation, cellValue };
 
 	return cell;
 }
 
-int generateTrulyRandomNumber(int lowLimit, int highLimit)
+int genRandomNum(int lowLimit, int highLimit)
 {
 	if (lowLimit >= highLimit)
 	{
@@ -229,6 +367,11 @@ void getFieldSize(int& rows, int& columns)
 	cin.clear();
 }
 
+void printPlayerDetails(Player pl)
+{
+	cout << pl.Name << "\n CurPos: " << pl.CurRow << "," << pl.CurColumn << " " << pl.Points << "\n";
+}
+
 int main()
 {
 	showStartMenu();
@@ -241,18 +384,50 @@ int main()
 	{
 	case NewGame:
 		getFieldSize(sizeRows, sizeColumns);
-		generateGameSeed();
+		generateGameField();
 		break;
 	case ContinueGame:
 		readFromFile();
 		break;
 	default:
-		cout << "Bye!";
+		cout << "Exited.";
 		return 0;
 		break;
 	}
 
 	printGrid();
+
+	Player* playerToMove = &playerA;
+
+	do
+	{
+		cout << playerToMove -> Name << " to move:\n";
+
+		int rowTo, colTo;
+		cin >> rowTo;
+		cin >> colTo;
+
+		if (!movePlayerIfPossible(*playerToMove, rowTo, colTo))
+		{
+			cout << "Invalid move, please type a valid spot;\n";
+			continue;
+		}
+		else
+		{
+			printPlayerDetails(*playerToMove);
+			if (playerToMove == &playerA)
+			{
+				playerToMove = &playerB;
+			}
+			else
+			{
+				playerToMove = &playerA;
+			}
+		}
+
+		//clearConsole();
+		printGrid();
+	} while (playerHasValidMoves(playerA) && playerHasValidMoves(playerB));
 
 	deleteGrid(sizeRows);
 }
