@@ -1,6 +1,6 @@
 #include <cmath>
-#include <iostream> // console io
 #include <iomanip>
+#include <iostream> // console io
 #include <random>
 #include <windows.h> // console colors
 
@@ -29,14 +29,14 @@ Cell** grid = nullptr;
 void showStartMenu();
 void initializeGrid(int rows, int cols);
 void deleteGrid(int rows);
-char intToChar(int input);
 void generateGameSeed();
-Cell generateCell(int curRow, int curCol, char symbol = '=', int value = -1);
+Cell generateCell(char symbol = '=', int value = -1);
 void getFieldSize(int& rows, int& columns);
 void clearConsole();
 void clearInputBuffer();
 void printGrid();
 int generateTrulyRandomNumber(int lowLimit, int highLimit);
+void generateNeccessaryCells();
 
 enum StartMenuOptions
 {
@@ -47,7 +47,7 @@ enum StartMenuOptions
 struct Cell
 {
 	char Symbol = OperationSymbols[0];
-	int Value = 0;
+	int Value = -1;
 	char SteppedOnBy = CellNotSteppedOn;
 	int ColorValue = TextWhite;
 };
@@ -115,46 +115,57 @@ void deleteGrid(int rows) {
 	delete[] grid;
 }
 
-char intToChar(int input)
-{
-	if (input > 9)
-	{
-		return '9';
-	}
-
-	return input + '0';
-}
-
 void generateGameSeed()
 {
 	initializeGrid(sizeRows, sizeColumns);
+
+	generateNeccessaryCells();
 
 	for (int i = 0; i < sizeRows; i++)
 	{
 		for (int j = 0; j < sizeColumns; j++)
 		{
-			grid[i][j] = generateCell(i, j);
+			if (grid[i][j].Value == -1) grid[i][j] = generateCell();
 		}
 	}
-
-
 }
 
-Cell generateCell(int curRow, int curCol, char symbol, int value)
+void generateNeccessaryCells()
 {
-	Cell cell = {};
+	Cell zeroCell = generateCell('+', 0);
 
-	if (curRow == 0 && curCol == 0)
+	Cell multZero = generateCell('*', 0);
+	Cell multTwo = generateCell('*', 2);
+	Cell divTwo = generateCell('/', 2);
+	Cell addOne = generateCell('+', 1);
+	Cell subOne = generateCell('-', 1);
+
+	Cell specials[] = { multZero, multTwo, divTwo, addOne, subOne };
+
+	grid[0][0] = zeroCell;
+	grid[sizeRows - 1][sizeColumns - 1] = zeroCell;
+
+	int neccessaryCellsCount = 5;
+
+	while (neccessaryCellsCount > 0)
 	{
-		return cell;
-	}
+		int ranRow = generateTrulyRandomNumber(0, sizeRows - 1);
+		int ranCol = generateTrulyRandomNumber(0, sizeColumns - 1);
 
-	else if (curRow == sizeRows - 1 && curCol == sizeColumns - 1)
-	{
-		return cell;
-	}
+		if (grid[ranRow][ranCol].Value != -1)
+		{
+			continue;
+		}
 
-	else if (symbol != '=' || value != -1)
+		grid[ranRow][ranCol] = specials[--neccessaryCellsCount];
+	}
+}
+
+Cell generateCell(char symbol, int value)
+{
+	Cell cell = { 0 };
+
+	if (symbol != '=' || value != -1)
 	{
 		cell = { symbol, abs(value) };
 		return cell;
