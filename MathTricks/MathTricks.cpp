@@ -1,8 +1,8 @@
-#include <cmath>
 #include <iomanip>
 #include <iostream> // console io
 #include <random>
 #include <windows.h> // console colors
+#include <fstream>
 
 using namespace std;
 
@@ -24,13 +24,16 @@ enum StartMenuOptions;
 struct Cell;
 struct Player;
 
+ofstream outStream;
+ifstream inStream;
+
 Cell** grid = nullptr;
 // to-do: write abs, min, max and strcopy functions
 void showStartMenu();
 void initializeGrid(int rows, int cols);
 void deleteGrid(int rows);
 void generateGameField();
-Cell generateCell(char symbol = '=', int value = -1);
+Cell generateCell(char symbol = '=', int value = -1, bool hasReachedMaxZeros = false);
 void getFieldSize(int& rows, int& columns);
 void clearConsole();
 void clearInputBuffer();
@@ -70,30 +73,46 @@ struct Player
 Player playerA = {};
 Player playerB = {};
 
-void printGrid() // make it so it's colored everytime, based on the cell's color value
+void printDividingLine(int dashes)
+{
+	for (int i = 0; i < sizeColumns; i++)
+	{
+		cout << "+";
+		for (int h = 0; h < dashes; h++)
+		{
+			cout << "-";
+		}
+	}
+
+	cout << "+\n";
+}
+
+void printGrid()
 {
 	HANDLE hConsole;
 	hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
 
-	/*
-		<in loop>
-			SetConsoleTextAttribute(hConsole, ColorValue);
-	*/
-
+	int spaceForCell = 3;
+	int dashes = spaceForCell + 2; // +2 symbols -> whitespace and sign
 
 	for (int i = 0; i < sizeRows; i++)
 	{
-		for (int j = 0; j < sizeColumns * 4; j++) cout << "_";
-
-		cout << "\n";
+		printDividingLine(dashes);
+		cout << "|";
 
 		for (int j = 0; j < sizeColumns; j++)
 		{
-			cout << grid[i][j].Symbol << grid[i][j].Value << " ";
+			SetConsoleTextAttribute(hConsole, grid[i][j].ColorValue);
+			cout << " " << left << grid[i][j].Symbol << setw(spaceForCell) << grid[i][j].Value;
+			SetConsoleTextAttribute(hConsole, ColorWhite);
+
+			cout << "|";
 		}
 
 		cout << "\n";
 	}
+
+	printDividingLine(dashes);
 }
 
 void clearConsole() {
@@ -141,18 +160,28 @@ void generateGameField()
 
 	generateNeccessaryCells();
 
+	// i had many grids where ~50% of cells had value of 0, so I limit them
+	int maxZeros = min(sizeRows, sizeColumns) / 2 - 1;
+	bool hasReachedMaxZeros = false;
+
 	for (int i = 0; i < sizeRows; i++)
 	{
 		for (int j = 0; j < sizeColumns; j++)
 		{
-			if (grid[i][j].Value == -1) grid[i][j] = generateCell();
+			if (grid[i][j].Value == -1)
+			{
+				grid[i][j] = generateCell('=', -1, hasReachedMaxZeros);
+
+				if (maxZeros <= 0) hasReachedMaxZeros = true;
+				else if (grid[i][j].Value == 0) maxZeros--;
+			}
 		}
 	}
 
 	initializePlayers();
 }
 
-void initializePlayers() // hardcoded the init
+void initializePlayers() 
 {
 	playerA.ColorAttribute = ColorYellow + 16 * ColorBlue;
 	playerA.CurRow = 0;
@@ -299,7 +328,7 @@ void generateNeccessaryCells()
 	}
 }
 
-Cell generateCell(char symbol, int value)
+Cell generateCell(char symbol, int value, bool hasReachedMaxZeros)
 {
 	Cell cell = { 0 };
 
@@ -310,6 +339,8 @@ Cell generateCell(char symbol, int value)
 	}
 
 	int minValueRan = 0;
+	if (hasReachedMaxZeros) minValueRan = 1;
+
 	int maxValueRan = max(sizeRows, sizeColumns);
 
 	char operation = OperationSymbols[genRandomNum(0, OperationsCount - 1)];
@@ -365,11 +396,13 @@ void getFieldSize(int& rows, int& columns)
 		cin >> columns;
 	} while (cin.fail() || rows < FieldSizeMin || rows > FieldSizeMax);
 	cin.clear();
+
+	clearConsole();
 }
 
 void printPlayerDetails(Player pl)
 {
-	cout << pl.Name << "\n CurPos: " << pl.CurRow << "," << pl.CurColumn << " " << pl.Points << "\n";
+	cout << pl.Name << " @<" << pl.CurRow << ", " << pl.CurColumn << "> " << ": " << pl.Points << " points\n";
 }
 
 int main()
@@ -401,7 +434,7 @@ int main()
 
 	do
 	{
-		cout << playerToMove -> Name << " to move:\n";
+		printPlayerDetails(*playerToMove);
 
 		int rowTo, colTo;
 		cin >> rowTo;
@@ -414,20 +447,29 @@ int main()
 		}
 		else
 		{
-			printPlayerDetails(*playerToMove);
-			if (playerToMove == &playerA)
-			{
-				playerToMove = &playerB;
-			}
-			else
-			{
-				playerToMove = &playerA;
-			}
+			if (playerToMove == &playerA) playerToMove = &playerB;
+
+			else playerToMove = &playerA;
+			
 		}
 
-		//clearConsole();
+		clearConsole();
 		printGrid();
-	} while (playerHasValidMoves(playerA) && playerHasValidMoves(playerB));
+	} while (playerHasValidMoves(*playerToMove));
+
+	// Save winner in the playerToMove and print
+	playerToMove = (playerA.Points > playerB.Points) ? &playerA : &playerB;
+	cout << playerToMove->Name << " is the winner with " << playerToMove->Points << " points.\n";
+
+	// Switch to loser and print
+	playerToMove = (playerToMove == &playerA) ? &playerB : &playerA;
+	cout << playerToMove->Name << " is second with " << playerToMove->Points << " points.\n";
 
 	deleteGrid(sizeRows);
 }
+
+/*
+Останали:
+- deserialize във файл и след това serialize
+- написване на собствени функции max, min, abs и други
+*/
