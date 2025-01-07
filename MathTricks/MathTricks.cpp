@@ -28,7 +28,6 @@ ofstream outStream;
 ifstream inStream;
 
 Cell** grid = nullptr;
-// to-do: write abs, min, max and strcopy functions
 void showStartMenu();
 void initializeGrid(int rows, int cols);
 void deleteGrid(int rows);
@@ -36,7 +35,6 @@ void generateGameField();
 Cell generateCell(char symbol = '=', int value = -1, bool hasReachedMaxZeros = false);
 void getFieldSize(int& rows, int& columns);
 void clearConsole();
-void clearInputBuffer();
 void printGrid();
 int genRandomNum(int lowLimit, int highLimit);
 void generateNeccessaryCells();
@@ -120,23 +118,17 @@ void clearConsole() {
 	cout << "\033[J";
 }
 
-void clearInputBuffer() {
-	cin.clear();
-	cin.sync();
-	cin.ignore();
-}
-
 void showStartMenu()
 {
 	cout << "Welcome to MathTricks!\n";
-	cout << "Enter '" << NewGame << "' to start a brand new game.\n";
-	cout << "Enter '" << ContinueGame << "' to read from a file and continue a game.\n";
+	cout << "Enter \'" << NewGame << "\' to start a brand new game.\n";
+	cout << "Enter \'" << ContinueGame << "\' to read from a file and continue a game.\n";
 	cout << "Enter something else to quit.\n";
 }
 
 void readFromFile()
 {
-
+	// outStream / inStream actions
 }
 
 void initializeGrid(int rows, int cols) {
@@ -160,7 +152,7 @@ void generateGameField()
 
 	generateNeccessaryCells();
 
-	// i had many grids where ~50% of cells had value of 0, so I limit them
+	// many grids where ~50% of cells had value of 0, so I limit them
 	int maxZeros = min(sizeRows, sizeColumns) / 2 - 1;
 	bool hasReachedMaxZeros = false;
 
@@ -470,6 +462,9 @@ int main()
 
 /*
 Останали:
-- deserialize във файл и след това serialize
-- написване на собствени функции max, min, abs и други
+- deserialize във файл и след това serialize - запазване на игра
+- написване на собствени функции max/336/, min /156, 342, 348/, abs/329/, strcpy /181, 188/
+- структуриране в отделни файлове /up.adash.gihub/
+- валидиране на всички възможни входни полета
+- добавяне на коментари за изясняване на кода
 */
