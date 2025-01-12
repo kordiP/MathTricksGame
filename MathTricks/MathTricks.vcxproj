@@ -127,7 +127,14 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="..\..\..\..\Desktop\prgrs\HelperFunctions.cpp" />
+    <ClCompile Include="..\..\..\..\Desktop\prgrs\Main.cpp" />
     <ClCompile Include="MathTricks.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\..\..\..\Desktop\prgrs\Constants.h" />
+    <ClInclude Include="..\..\..\..\Desktop\prgrs\MathTricks.h" />
+    <ClInclude Include="..\..\..\..\Desktop\prgrs\HelperFunctions.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
