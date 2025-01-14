@@ -1,5 +1,20 @@
-#include <random>
+/*
+*
+* Solution to course project # 2
+* Introducution To Programming course
+* Faculty of Mathematics and Informatics of Sofia University
+* Winter Semester 2024/2025
+*
+* @author Atanas Kordov
+* @idnumber 5MI0600508
+* @compiler VC
+*
+* file for helper function
+*
+*/
 
+#include <random>
+#include <iostream>
 using namespace std;
 
 int genRandomNum(int lowLimit, int highLimit)
@@ -62,4 +77,10 @@ void stringCopy(char* destination, const char* source)
 	}
 
 	destination[++index] = '\0';
+}
+
+void clearConsole()
+{
+	cout << "\033[;H"; // move cursor to top left corner
+	cout << "\033[J"; // clear
 }
