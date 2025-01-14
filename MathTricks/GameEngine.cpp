@@ -1,8 +1,24 @@
-#include <iomanip>
-#include <iostream> // console io
-#include <random>
+/*
+*
+* Solution to course project # 2
+* Introducution To Programming course
+* Faculty of Mathematics and Informatics of Sofia University
+* Winter Semester 2024/2025
+* 
+* @author Atanas Kordov
+* @idnumber 5MI0600508
+* @compiler VC
+* 
+* file for main game logic
+* 
+*/
+
+#include <iomanip> // setw io
+#include <random> // truly random
 #include <windows.h> // console colors
+#include <cmath> // for sqrt
 #include <fstream>
+#include <iostream>
 #include "Constants.h"
 #include "HelperFunctions.h"
 
@@ -11,14 +27,8 @@ using namespace std;
 int sizeRows;
 int sizeColumns;
 
-enum StartMenuOptions;
-struct Cell;
-struct Player;
-
 ofstream outStream;
 ifstream inStream;
-
-Cell** grid = nullptr;
 
 enum StartMenuOptions
 {
@@ -44,6 +54,8 @@ struct Player
 	int CurColumn = -1; // Current column of the player
 };
 
+Cell** grid = nullptr;
+
 Player playerA;
 Player playerB;
 
@@ -53,6 +65,7 @@ void clearInputBuffer() {
 	cin.ignore();
 }
 
+// Prints the table's horizontal dividers.
 void printDividingLine(int dashes)
 {
 	for (int i = 0; i < sizeColumns; i++)
@@ -67,6 +80,7 @@ void printDividingLine(int dashes)
 	cout << "+\n";
 }
 
+// Prints the current state of the grid.
 void printGrid()
 {
 	HANDLE hConsole;
@@ -95,6 +109,7 @@ void printGrid()
 	printDividingLine(dashes);
 }
 
+// Shows start menu options.
 void showStartMenu()
 {
 	cout << "Welcome to MathTricks!\n";
@@ -103,6 +118,16 @@ void showStartMenu()
 	cout << "Enter something else to quit.\n";
 }
 
+// Init the grid with user's inputed size.
+void initializeGrid(int rows, int cols) {
+	grid = new Cell * [rows];
+
+	for (int i = 0; i < rows; ++i) {
+		grid[i] = new Cell[cols];
+	}
+}
+
+// Clear dynamically allocated memory.
 void deleteGrid(int rows) {
 	for (int i = 0; i < rows; ++i) {
 		delete[] grid[i];
@@ -110,6 +135,7 @@ void deleteGrid(int rows) {
 	delete[] grid;
 }
 
+// Init the players' values.
 void initializePlayers()
 {
 	playerA.ColorAttribute = ColorYellow + 16 * ColorBlue;
@@ -127,11 +153,19 @@ void initializePlayers()
 	grid[playerB.CurRow][playerB.CurColumn].ColorValue = playerB.ColorAttribute;
 }
 
-void readFromFile()
+// Read previously played game.
+void readGridFromFile()
 {
 	// outStream / inStream actions
 }
 
+// Save current grid state to file.
+void saveGridToFile()
+{
+
+}
+
+// Checks if player's input is a valid move.
 bool isValidPlayerMove(Player player, int rowTo, int colTo)
 {
 	if (rowTo >= sizeRows || rowTo < 0)
@@ -168,15 +202,22 @@ bool isValidPlayerMove(Player player, int rowTo, int colTo)
 	return true;
 }
 
-void initializeGrid(int rows, int cols) {
-	grid = new Cell * [rows];
-
-	for (int i = 0; i < rows; ++i) {
-		grid[i] = new Cell[cols];
+int differenceFromMiddle(int curRow, int curCol)
+{
+	// if it's one of the neccessary cells
+	if (curRow < 0 || curCol < 0)
+	{
+		return 0;
 	}
+
+	int centerRow = sizeRows / 2;
+	int centerCol = sizeColumns / 2;
+
+
 }
 
-Cell generateCell(char symbol = '=', int value = -1, bool hasReachedMaxZeros = false)
+// Generate cells randomly with option to give it specific values.
+Cell generateCell(char symbol = '=', int value = -1, bool reachedMaxZeros = false, int curRow = -1, int curCol = -1)
 {
 	Cell cell = { 0 };
 
@@ -187,22 +228,30 @@ Cell generateCell(char symbol = '=', int value = -1, bool hasReachedMaxZeros = f
 	}
 
 	int minValueRan = 0;
-	if (hasReachedMaxZeros) minValueRan = 1;
+	if (reachedMaxZeros) minValueRan = 1;
 
 	int maxValueRan = maxNum(sizeRows, sizeColumns);
-
 	char operation = OperationSymbols[genRandomNum(0, OperationsCount - 1)];
 
 	if (operation == '*')
 	{
 		maxValueRan = minNum(sizeRows, sizeColumns) / 2;
+		if (maxValueRan > 4) maxValueRan = 4;
 	}
 
 	if (operation == '/')
 	{
 		minValueRan = 2;
 		maxValueRan = minNum(sizeRows, sizeColumns) / 2;
+		if (maxValueRan > 4) maxValueRan = 4;
 	}
+
+	differenceFromMiddle(curRow, curCol);
+	/*
+	here logic for
+	if close to middle -> maxvalue and minvalue -> bigger
+	if far from middle -> maxvalue and minvalue -> smaller
+	*/
 
 	int cellValue = genRandomNum(minValueRan, maxValueRan);
 
@@ -211,6 +260,7 @@ Cell generateCell(char symbol = '=', int value = -1, bool hasReachedMaxZeros = f
 	return cell;
 }
 
+// Generates the neccessary cells for every game.
 void generateNeccessaryCells()
 {
 	Cell zeroCell = generateCell('+', 0);
@@ -242,10 +292,10 @@ void generateNeccessaryCells()
 	}
 }
 
+// Generate field and it's unique values.
 void generateGameField()
 {
 	initializeGrid(sizeRows, sizeColumns);
-
 	generateNeccessaryCells();
 
 	// many grids where ~50% of cells had value of 0, so I limit them
@@ -269,6 +319,7 @@ void generateGameField()
 	initializePlayers();
 }
 
+// Checks if player's input is a possible move.
 bool movePlayerIfPossible(Player& player, int rowTo, int colTo)
 {
 	if (!isValidPlayerMove(player, rowTo, colTo))
@@ -311,6 +362,7 @@ bool movePlayerIfPossible(Player& player, int rowTo, int colTo)
 	return true;
 }
 
+// Checks if player has any valid move.
 bool playerHasValidMoves(Player player)
 {
 	int curRow = player.CurRow;
@@ -332,6 +384,7 @@ bool playerHasValidMoves(Player player)
 	return countValid;
 }
 
+// Gets user input for field size.
 void getFieldSize()
 {
 	cout << "You chose to generate a new game.\n";
@@ -355,6 +408,7 @@ void getFieldSize()
 	clearConsole();
 }
 
+// Print player current move details.
 void printPlayerDetails(Player pl)
 {
 	cout << pl.Name << " @<" << pl.CurRow << ", " << pl.CurColumn << "> " << ": " << pl.Points << " points\n";
@@ -375,7 +429,7 @@ void startProgram()
 		generateGameField();
 		break;
 	case ContinueGame:
-		readFromFile();
+		readGridFromFile();
 		break;
 	default:
 		cout << "Exited.";
