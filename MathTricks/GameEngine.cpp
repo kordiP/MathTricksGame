@@ -202,7 +202,8 @@ bool isValidPlayerMove(Player player, int rowTo, int colTo)
 	return true;
 }
 
-int differenceFromMiddle(int curRow, int curCol)
+// Calculate current cell position relative to the middle.
+double differenceFromMiddle(int curRow, int curCol)
 {
 	// if it's one of the neccessary cells
 	if (curRow < 0 || curCol < 0)
@@ -213,7 +214,8 @@ int differenceFromMiddle(int curRow, int curCol)
 	int centerRow = sizeRows / 2;
 	int centerCol = sizeColumns / 2;
 
-
+	// calc distance with Euclidean method
+	return sqrt((curRow - centerRow) * (curRow - centerRow) + (curCol - centerCol) * (curCol - centerCol));
 }
 
 // Generate cells randomly with option to give it specific values.
@@ -246,17 +248,14 @@ Cell generateCell(char symbol = '=', int value = -1, bool reachedMaxZeros = fals
 		if (maxValueRan > 4) maxValueRan = 4;
 	}
 
-	differenceFromMiddle(curRow, curCol);
-	/*
-	here logic for
-	if close to middle -> maxvalue and minvalue -> bigger
-	if far from middle -> maxvalue and minvalue -> smaller
-	*/
+	double dist = differenceFromMiddle(curRow, curCol);
+	double maxDist = differenceFromMiddle(0, 0);
+
+	// value between 0-1, 0 being in the middle 1 being the furthest from the middle
+	double normDist = dist / maxDist;
 
 	int cellValue = genRandomNum(minValueRan, maxValueRan);
-
 	cell = { operation, cellValue };
-
 	return cell;
 }
 
