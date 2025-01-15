@@ -657,10 +657,3 @@ void startProgram()
 	manageMoves(playerToMove);
 	deleteGrid(sizeRows);
 }
-
-/*
-Останали:
-- change commits names
-- finish reading the grid
-- write strchr, atoi, strtok
-*/
