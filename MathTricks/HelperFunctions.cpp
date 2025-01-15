@@ -61,6 +61,11 @@ int absNum(int num)
 	return num;
 }
 
+int ceilNum(double num) {
+	int intPart = (int)(num);
+	return (num - intPart < 0.1) ? intPart : intPart + 1;
+}
+
 void stringCopy(char* destination, const char* source)
 {
 	while (destination == nullptr || source == nullptr)

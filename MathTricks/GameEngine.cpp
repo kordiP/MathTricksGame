@@ -27,28 +27,26 @@ using namespace std;
 int sizeRows;
 int sizeColumns;
 
-ofstream outStream;
-ifstream inStream;
-
 enum StartMenuOptions
 {
 	NewGame = 1,
-	ContinueGame = 2
+	ContinueGame = 2,
+	SaveGame = -1
 };
 
 struct Cell
 {
-	char Symbol = '+'; // Which operation we will apply to the player's points
+	char Operation = '+'; // Which operation we will apply to the player's points
 	int Value = -1; // The numeric value for the operation
 
-	int ColorValue = ColorWhite; // What color should we color the cell
+	int ColorValue = COLOR_WHITE; // What color should we color the cell
 	bool SteppedOn = false; // If it has been stepped on
 };
 
 struct Player
 {
-	int ColorAttribute = ColorWhite; // Player individual color: foreground + 16 * background
-	char Name[20] = ""; // Not chosen by player, assigned by default
+	int ColorAttribute = COLOR_WHITE; // Player individual color: foreground + 16 * background
+	char Name[20] = "Player (undef)"; // Not chosen by player, assigned by default
 	double Points = 0.0; // Current player score
 	int CurRow = -1; // Current row of the player
 	int CurColumn = -1; // Current column of the player
@@ -80,9 +78,9 @@ void printDividingLine(int dashes)
 	cout << "+\n";
 }
 
-// Prints the current state of the grid.
 void printGrid()
 {
+	// for changes in color of console
 	HANDLE hConsole;
 	hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
 
@@ -96,9 +94,10 @@ void printGrid()
 
 		for (int j = 0; j < sizeColumns; j++)
 		{
+			// sets color based on an integer. Values are predefined for the library
 			SetConsoleTextAttribute(hConsole, grid[i][j].ColorValue);
-			cout << " " << left << grid[i][j].Symbol << setw(spaceForCell) << grid[i][j].Value;
-			SetConsoleTextAttribute(hConsole, ColorWhite);
+			cout << " " << left << grid[i][j].Operation << setw(spaceForCell) << grid[i][j].Value;
+			SetConsoleTextAttribute(hConsole, COLOR_WHITE);
 
 			cout << "|";
 		}
@@ -109,16 +108,15 @@ void printGrid()
 	printDividingLine(dashes);
 }
 
-// Shows start menu options.
-void showStartMenu()
+void printStartMenu()
 {
 	cout << "Welcome to MathTricks!\n";
 	cout << "Enter \'" << NewGame << "\' to start a brand new game.\n";
-	cout << "Enter \'" << ContinueGame << "\' to read from a file and continue a game.\n";
+	cout << "Enter \'" << ContinueGame << "\' to continue last game.\n";
 	cout << "Enter something else to quit.\n";
+	cout << "*Enter \'" << SaveGame << "\' at any point in the game to save game. Previously saved game will be lost.\n";
 }
 
-// Init the grid with user's inputed size.
 void initializeGrid(int rows, int cols) {
 	grid = new Cell * [rows];
 
@@ -127,7 +125,6 @@ void initializeGrid(int rows, int cols) {
 	}
 }
 
-// Clear dynamically allocated memory.
 void deleteGrid(int rows) {
 	for (int i = 0; i < rows; ++i) {
 		delete[] grid[i];
@@ -135,34 +132,81 @@ void deleteGrid(int rows) {
 	delete[] grid;
 }
 
-// Init the players' values.
-void initializePlayers()
+void setPlayer(Player& pl, int colorAtt, int curRow, int curCol, const char* name, double points = 0.0)
 {
-	playerA.ColorAttribute = ColorYellow + 16 * ColorBlue;
-	playerA.CurRow = 0;
-	playerA.CurColumn = 0;
-	stringCopy(playerA.Name, "Player 1 (blue)");
-	grid[playerA.CurRow][playerA.CurColumn].SteppedOn = true;
-	grid[playerA.CurRow][playerA.CurColumn].ColorValue = playerA.ColorAttribute;
-
-	playerB.ColorAttribute = ColorYellow + 16 * ColorGreen;
-	playerB.CurRow = sizeRows - 1;
-	playerB.CurColumn = sizeColumns - 1;
-	stringCopy(playerB.Name, "Player 2 (green)");
-	grid[playerB.CurRow][playerB.CurColumn].SteppedOn = true;
-	grid[playerB.CurRow][playerB.CurColumn].ColorValue = playerB.ColorAttribute;
+	pl.ColorAttribute = colorAtt; 
+	pl.CurRow = curRow;
+	pl.CurRow = curCol;
+	pl.Points = points;
+	stringCopy(pl.Name, name);
+	grid[curRow][curCol].SteppedOn = true;
+	grid[curRow][curCol].ColorValue = pl.ColorAttribute;
 }
 
-// Read previously played game.
-void readGridFromFile()
+// Setup both players with predefined values.
+void setupPlayersDefault()
 {
-	// outStream / inStream actions
+	setPlayer(playerA, PLAYER_A_COLOR, 0, 0, PLAYER_A_NAME);
+	setPlayer(playerB, PLAYER_B_COLOR, sizeRows - 1, sizeColumns - 1, PLAYER_B_NAME);
 }
 
-// Save current grid state to file.
-void saveGridToFile()
-{
+// Read last played game.
+void readGridFromFile(Player* plToMove) {
+	int plACurRow = 0;
+	int plACurCol = 0;
+	double plAPoints = 0.0;
 
+	int plBCurRow = 0;
+	int plBCurCol = 0;
+	double plBPoints = 0.0;
+
+	bool isPlAMove = false;
+
+	std::ofstream saveFile("lastGame.txt");
+	if (saveFile.is_open()) {
+		saveFile << "P1: " << plACurRow << ',' << plACurCol << ',' << plAPoints << '\n';
+
+		saveFile << "P2: " << plBCurRow << ',' << plBCurCol << ',' << plBPoints << '\n';
+
+		saveFile << "A-MOVES: " << isPlAMove << '\n';
+
+		saveFile << "GRID: \n" << sizeRows << '\n' << sizeColumns << '\n';
+
+		initializeGrid(sizeRows, sizeColumns);
+		// +,0,158,1
+		saveFile << "\n";
+
+		// read the grid and done
+
+		setPlayer(playerA, PLAYER_A_COLOR, plACurRow, plACurCol, PLAYER_A_NAME, plAPoints);
+		setPlayer(playerB, PLAYER_B_COLOR, plBCurRow, plBCurCol, PLAYER_B_NAME, plBPoints);
+
+		saveFile.close();
+		return;
+	}
+}
+
+void saveGridToFile(bool playerAToMove)
+{
+	ofstream saveFile;
+	saveFile.open("saveFile.txt");
+
+	saveFile << "P1: " << playerA.CurRow << "," << playerA.CurColumn << "," << playerA.Points << "\n";
+	saveFile << "P2: " << playerB.CurRow << "," << playerB.CurColumn << "," << playerB.Points << "\n";
+	saveFile << "A-MOVES: " << playerAToMove << "\n";
+	saveFile << "GRID: " << sizeRows << "," << sizeColumns << "\n";
+
+	for (int i = 0; i < sizeRows; i++)
+	{
+		for (int j = 0; j < sizeColumns; j++)
+		{
+			Cell curCell = grid[i][j];
+			saveFile << curCell.Operation << "," << curCell.Value << "," << curCell.ColorValue << "," << curCell.SteppedOn << " ";
+		}
+		saveFile << "\n";
+	}
+
+	saveFile.close();
 }
 
 // Checks if player's input is a valid move.
@@ -219,47 +263,49 @@ double differenceFromMiddle(int curRow, int curCol)
 }
 
 // Generate cells randomly with option to give it specific values.
-Cell generateCell(char symbol = '=', int value = -1, bool reachedMaxZeros = false, int curRow = -1, int curCol = -1)
+Cell generateCell(char symbol = '=', int value = -1, int curRow = -1, int curCol = -1)
 {
 	Cell cell = { 0 };
 
 	if (symbol != '=' || value != -1)
 	{
-		cell = { symbol, absNum(value) };
+		cell = { symbol, value };
 		return cell;
 	}
 
 	int minValueRan = 0;
-	if (reachedMaxZeros) minValueRan = 1;
-
 	int maxValueRan = maxNum(sizeRows, sizeColumns);
-	char operation = OperationSymbols[genRandomNum(0, OperationsCount - 1)];
 
-	if (operation == '*')
+	char operation = OPERATIONS_ARR[genRandomNum(0, OPERATIONS_COUNT - 1)];
+
+	double dist = differenceFromMiddle(curRow, curCol); 
+	// can be optimized, no need to run for every cell (1)
+	double maxDist = differenceFromMiddle(0, 0); 
+
+	// value is in interval: [0, 1]. Closer to 0 == Closer to center. 1 is the most distant point
+	double normDist = dist / maxDist;
+
+	if (operation == '+' || operation == '-')
 	{
-		maxValueRan = minNum(sizeRows, sizeColumns) / 2;
-		if (maxValueRan > 4) maxValueRan = 4;
-	}
+		int penMax = maxValueRan - CELL_VAL_RANGE; // the absolute maximum penalty for a cell + same as (1)
+		double penalty = normDist * penMax;
 
-	if (operation == '/')
+		maxValueRan -= ceilNum(penalty);
+		minValueRan = maxValueRan - CELL_VAL_RANGE;
+	}
+	else if (operation == '/' || operation == '*')
 	{
 		minValueRan = 2;
-		maxValueRan = minNum(sizeRows, sizeColumns) / 2;
-		if (maxValueRan > 4) maxValueRan = 4;
+		maxValueRan = MULTIPLIER_MAX;
+
+		if (normDist >= 0.5) maxValueRan--;
 	}
-
-	double dist = differenceFromMiddle(curRow, curCol);
-	double maxDist = differenceFromMiddle(0, 0);
-
-	// value between 0-1, 0 being in the middle 1 being the furthest from the middle
-	double normDist = dist / maxDist;
 
 	int cellValue = genRandomNum(minValueRan, maxValueRan);
 	cell = { operation, cellValue };
 	return cell;
 }
 
-// Generates the neccessary cells for every game.
 void generateNeccessaryCells()
 {
 	Cell zeroCell = generateCell('+', 0);
@@ -291,15 +337,10 @@ void generateNeccessaryCells()
 	}
 }
 
-// Generate field and it's unique values.
 void generateGameField()
 {
 	initializeGrid(sizeRows, sizeColumns);
 	generateNeccessaryCells();
-
-	// many grids where ~50% of cells had value of 0, so I limit them
-	int maxZeros = minNum(sizeRows, sizeColumns) / 2 - 1;
-	bool hasReachedMaxZeros = false;
 
 	for (int i = 0; i < sizeRows; i++)
 	{
@@ -307,18 +348,13 @@ void generateGameField()
 		{
 			if (grid[i][j].Value == -1)
 			{
-				grid[i][j] = generateCell('=', -1, hasReachedMaxZeros);
-
-				if (maxZeros <= 0) hasReachedMaxZeros = true;
-				else if (grid[i][j].Value == 0) maxZeros--;
+				grid[i][j] = generateCell('=', -1, i, j);
 			}
 		}
 	}
-
-	initializePlayers();
 }
 
-// Checks if player's input is a possible move.
+// Checks if player's input is a possible move and do move.
 bool movePlayerIfPossible(Player& player, int rowTo, int colTo)
 {
 	if (!isValidPlayerMove(player, rowTo, colTo))
@@ -332,7 +368,7 @@ bool movePlayerIfPossible(Player& player, int rowTo, int colTo)
 	int diffRow = rowTo - curRow;
 	int diffCol = colTo - curCol;
 
-	grid[curRow][curCol].ColorValue -= ColorYellow;
+	grid[curRow][curCol].ColorValue -= COLOR_YELLOW;
 
 	curRow += diffRow;
 	curCol += diffCol;
@@ -342,7 +378,7 @@ bool movePlayerIfPossible(Player& player, int rowTo, int colTo)
 	curCell.SteppedOn = true;
 	curCell.ColorValue = player.ColorAttribute;
 
-	switch (curCell.Symbol)
+	switch (curCell.Operation)
 	{
 	case '+':
 		player.Points += curCell.Value;
@@ -361,7 +397,6 @@ bool movePlayerIfPossible(Player& player, int rowTo, int colTo)
 	return true;
 }
 
-// Checks if player has any valid move.
 bool playerHasValidMoves(Player player)
 {
 	int curRow = player.CurRow;
@@ -392,34 +427,65 @@ void getFieldSize()
 	do
 	{
 		clearInputBuffer();
-		cout << "Range: " << FieldSizeMin << " - " << FieldSizeMax << "\n";
+		cout << "Range: " << GRID_SIZE_MIN << " - " << GRID_SIZE_MAX << "\n";
 		cin >> sizeRows;
-	} while (cin.fail() || sizeRows < FieldSizeMin || sizeRows > FieldSizeMax);
+	} while (cin.fail() || sizeRows < GRID_SIZE_MIN || sizeRows > GRID_SIZE_MAX);
 
 	cout << "Enter the number of columns for the field: \n";
 	do
 	{
 		clearInputBuffer();
-		cout << "Range: " << FieldSizeMin << " - " << FieldSizeMax << "\n";
+		cout << "Range: " << GRID_SIZE_MIN << " - " << GRID_SIZE_MAX << "\n";
 		cin >> sizeColumns;
-	} while (cin.fail() || sizeColumns < FieldSizeMin || sizeColumns > FieldSizeMax);
+	} while (cin.fail() || sizeColumns < GRID_SIZE_MIN || sizeColumns > GRID_SIZE_MAX);
 	
 	clearConsole();
 }
 
-// Print player current move details.
 void printPlayerDetails(Player pl)
 {
 	cout << pl.Name << " @<" << pl.CurRow << ", " << pl.CurColumn << "> " << ": " << pl.Points << " points\n";
 }
 
+void printWinner()
+{
+	if (playerA.Points == playerB.Points)
+	{
+		cout << "Tie game! Both players had " << playerA.Points << " points!";
+	}
+	else if (playerA.Points > playerB.Points)
+	{
+		cout << playerA.Name << " is the winner with " << playerA.Points << "!\n";
+		cout << playerB.Name << " had " << playerB.Points << ".\n";
+	}
+	else
+	{
+		cout << playerB.Name << " is the winner with " << playerB.Points << "!";
+		cout << playerB.Name << " had " << playerB.Points << ".\n";
+	}
+}
+
+// Clear buffers and trigger file save
+void endGameWithSave(Player* plToMove)
+{
+	clearConsole();
+	clearInputBuffer();
+
+	saveGridToFile(plToMove == &playerA);
+	cout << "Game saved in local file.";
+
+	deleteGrid(sizeRows);
+}
+
 void startProgram()
 {
-	showStartMenu();
+	printStartMenu();
 
 	int gameInitOption;
 	cin >> gameInitOption;
 	clearConsole();
+
+	Player* playerToMove = &playerA;
 
 	switch (gameInitOption)
 	{
@@ -428,28 +494,38 @@ void startProgram()
 		generateGameField();
 		break;
 	case ContinueGame:
-		readGridFromFile();
+		readGridFromFile(playerToMove);
 		break;
 	default:
 		cout << "Exited.";
 		return;
 		break;
 	}
-
 	printGrid();
-	Player* playerToMove = &playerA;
 
 	do
 	{
 		printPlayerDetails(*playerToMove);
-
 		int rowTo, colTo;
+
 		cin >> rowTo;
+		if (rowTo == -1)
+		{
+			endGameWithSave(playerToMove);
+			return;
+		}
+
 		cin >> colTo;
+		if (colTo == -1)
+		{
+			endGameWithSave(playerToMove);
+			return;
+		}
 
 		if (!movePlayerIfPossible(*playerToMove, rowTo, colTo))
 		{
-			cout << "Invalid move, please type a valid spot;\n";
+			cout << "Invalid move, please type a valid spot.\n";
+			clearInputBuffer();
 			continue;
 		}
 		else
@@ -457,28 +533,21 @@ void startProgram()
 			if (playerToMove == &playerA) playerToMove = &playerB;
 
 			else playerToMove = &playerA;
-			
 		}
 
+		clearInputBuffer();
 		clearConsole();
 		printGrid();
 	} while (playerHasValidMoves(*playerToMove));
 
-	// Save winner in the playerToMove and print
-	playerToMove = (playerA.Points > playerB.Points) ? &playerA : &playerB;
-	cout << playerToMove->Name << " is the winner with " << playerToMove->Points << " points.\n";
-
-	// Switch to loser and print
-	playerToMove = (playerToMove == &playerA) ? &playerB : &playerA;
-	cout << playerToMove->Name << " is second with " << playerToMove->Points << " points.\n";
-
+	printWinner();
 	deleteGrid(sizeRows);
 }
 
 /*
 Останали:
-- deserialize във файл и след това serialize - запазване на игра
-- fair game logic -> closer to center -> better chance for a big num (+/*)
 - валидиране на всички възможни входни полета
-- добавяне на коментари за изясняване на кода
+- change commits names
+- deserialize only grid left
+- check for magic numbers
 */
