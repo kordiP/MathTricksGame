@@ -1,4 +1,6 @@
 /*
+* 
+* https://github.com/kordiP/MathTricksGame
 *
 * Solution to course project # 2
 * Introducution To Programming course
