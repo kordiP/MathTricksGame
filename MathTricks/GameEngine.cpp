@@ -1,5 +1,7 @@
 /*
 *
+* https://github.com/kordiP/MathTricksGame
+* 
 * Solution to course project # 2
 * Introducution To Programming course
 * Faculty of Mathematics and Informatics of Sofia University
@@ -14,7 +16,6 @@
 */
 
 #include <iomanip> // setw io
-#include <random> // truly random
 #include <windows.h> // console colors
 #include <cmath> // for sqrt
 #include <fstream>
@@ -46,10 +47,10 @@ struct Cell
 struct Player
 {
 	int ColorAttribute = COLOR_WHITE; // Player individual color: foreground + 16 * background
-	char Name[20] = "Player (undef)"; // Not chosen by player, assigned by default
+	char Name[20] = "Player (UNDEF)"; // Not chosen by player, assigned by default
 	double Points = 0.0; // Current player score
-	int CurRow = -1; // Current row of the player
-	int CurColumn = -1; // Current column of the player
+	int CurRow = 0; // Current row of the player
+	int CurColumn = 0; // Current column of the player
 };
 
 Cell** grid = nullptr;
@@ -136,7 +137,7 @@ void setPlayer(Player& pl, int colorAtt, int curRow, int curCol, const char* nam
 {
 	pl.ColorAttribute = colorAtt; 
 	pl.CurRow = curRow;
-	pl.CurRow = curCol;
+	pl.CurColumn = curCol;
 	pl.Points = points;
 	stringCopy(pl.Name, name);
 	grid[curRow][curCol].SteppedOn = true;
@@ -150,61 +151,155 @@ void setupPlayersDefault()
 	setPlayer(playerB, PLAYER_B_COLOR, sizeRows - 1, sizeColumns - 1, PLAYER_B_NAME);
 }
 
-// Read last played game.
-void readGridFromFile(Player* plToMove) {
-	int plACurRow = 0;
-	int plACurCol = 0;
-	double plAPoints = 0.0;
+char* customStrtok(char* str, char delimiter) {
+	static char* currentPos = nullptr;
 
-	int plBCurRow = 0;
-	int plBCurCol = 0;
-	double plBPoints = 0.0;
-
-	bool isPlAMove = false;
-
-	std::ofstream saveFile("lastGame.txt");
-	if (saveFile.is_open()) {
-		saveFile << "P1: " << plACurRow << ',' << plACurCol << ',' << plAPoints << '\n';
-
-		saveFile << "P2: " << plBCurRow << ',' << plBCurCol << ',' << plBPoints << '\n';
-
-		saveFile << "A-MOVES: " << isPlAMove << '\n';
-
-		saveFile << "GRID: \n" << sizeRows << '\n' << sizeColumns << '\n';
-
-		initializeGrid(sizeRows, sizeColumns);
-		// +,0,158,1
-		saveFile << "\n";
-
-		// read the grid and done
-
-		setPlayer(playerA, PLAYER_A_COLOR, plACurRow, plACurCol, PLAYER_A_NAME, plAPoints);
-		setPlayer(playerB, PLAYER_B_COLOR, plBCurRow, plBCurCol, PLAYER_B_NAME, plBPoints);
-
-		saveFile.close();
-		return;
+	if (str != nullptr) {
+		currentPos = str;  // Initialize the current position
 	}
+
+	if (currentPos == nullptr || *currentPos == '\0') {
+		return nullptr;  // No more tokens
+	}
+
+	char* token = currentPos;
+
+	// Find the next delimiter or end of the string
+	while (*currentPos != '\0' && *currentPos != delimiter) {
+		currentPos++;
+	}
+
+	if (*currentPos != '\0') {
+		*currentPos = '\0';  // Replace delimiter with null terminator
+		currentPos++;  // Move past the delimiter
+	}
+
+	return token;
+}
+
+bool readGridFromFile(Player* plToMove) {
+	ifstream saveFile(SAVE_FILE_NAME);
+	char line[FILE_LINE_LEN_MAX] = {};
+	bool aMoves = false;
+	int curCol = 0;
+	int curRow = 0;
+
+	if (!saveFile.is_open()) {
+		cout << "Could not open file." << "\n";
+		return false;
+	}
+
+	while (saveFile.getline(line, FILE_LINE_LEN_MAX)) {
+		if (line[0] == 'G' && line[1] == 'S') {
+			char* dataStart = strchr(line, ':');
+			if (dataStart) {
+				dataStart++; // Move past ':'
+				char* token1 = dataStart;
+				char* token2 = strchr(token1, ',');
+				*token2 = '\0';
+
+				sizeRows = atoi(token1);
+				sizeColumns = atoi(token2 + 1);
+
+				initializeGrid(sizeRows, sizeColumns);
+			}
+		}
+		else if (line[0] == 'P' && line[1] == '1') {
+			char* dataStart = charInString(line, ':');
+			if (dataStart) {
+				dataStart++; // Move past ':'
+				char* token1 = dataStart;
+				char* token2 = charInString(token1, ',');
+				*token2 = '\0';
+				char* token3 = charInString(token2 + 1, ',');
+				*token3 = '\0';
+
+				setPlayer(playerA, PLAYER_A_COLOR, asciiToInt(token1), asciiToInt(token2 + 1), PLAYER_A_NAME, asciiToInt(token3 + 1));
+			}
+		}
+		else if (line[0] == 'P' && line[1] == '2') {
+			char* dataStart = charInString(line, ':');
+			if (dataStart) {
+				dataStart++; // Move past ':'
+				char* token1 = dataStart;
+				char* token2 = charInString(token1, ',');
+				*token2 = '\0';
+				char* token3 = charInString(token2 + 1, ',');
+				*token3 = '\0';
+
+				setPlayer(playerB, PLAYER_B_COLOR, asciiToInt(token1), asciiToInt(token2 + 1), PLAYER_B_NAME, asciiToInt(token3 + 1));
+			}
+		}
+		else if (line[0] == 'A' && line[1] == 'M') {
+			char* dataStart = charInString(line, ':');
+			if (dataStart) {
+				dataStart++; // Move past ':'
+				aMoves = (asciiToInt(dataStart) == 1);
+			}
+		}
+		else {
+			char* substr = stringSplit(line, ';');
+			while (substr) {
+				Cell cell;
+
+				// Parse the cell details: operation, value, color, steppedOn
+				char* valuePtr = charInString(substr, ',');
+				*valuePtr = '\0';
+				cell.Operation = substr[0];
+
+				char* colorPtr = charInString(valuePtr + 1, ',');
+				*colorPtr = '\0';
+				cell.Value = asciiToInt(valuePtr + 1);
+
+				char* steppedOnPtr = charInString(colorPtr + 1, ',');
+				*steppedOnPtr = '\0';
+				cell.ColorValue = asciiToInt(colorPtr + 1);
+
+				cell.SteppedOn = (asciiToInt(steppedOnPtr + 1) == 1);
+
+				grid[curRow][curCol++] = cell;
+
+				if (curCol == sizeColumns) {
+					curCol = 0;
+					curRow++;
+				}
+
+				substr = stringSplit(nullptr, ';');
+			}
+		}
+	}
+
+	// Set the player who is supposed to move
+	*plToMove = aMoves ? playerA : playerB;
+
+	saveFile.close();
+	return true;
 }
 
 void saveGridToFile(bool playerAToMove)
 {
 	ofstream saveFile;
-	saveFile.open("saveFile.txt");
+	saveFile.open(SAVE_FILE_NAME);
 
-	saveFile << "P1: " << playerA.CurRow << "," << playerA.CurColumn << "," << playerA.Points << "\n";
-	saveFile << "P2: " << playerB.CurRow << "," << playerB.CurColumn << "," << playerB.Points << "\n";
-	saveFile << "A-MOVES: " << playerAToMove << "\n";
-	saveFile << "GRID: " << sizeRows << "," << sizeColumns << "\n";
+	// as in GRID SIZE
+	saveFile << "GS:" << sizeRows << "," << sizeColumns << "\n";
 
+	// save all cells
 	for (int i = 0; i < sizeRows; i++)
 	{
 		for (int j = 0; j < sizeColumns; j++)
 		{
 			Cell curCell = grid[i][j];
-			saveFile << curCell.Operation << "," << curCell.Value << "," << curCell.ColorValue << "," << curCell.SteppedOn << " ";
+			saveFile << curCell.Operation << "," << curCell.Value << "," << curCell.ColorValue << "," << curCell.SteppedOn << ";";
 		}
 		saveFile << "\n";
 	}
+
+	// player A/B data
+	saveFile << "P1:" << playerA.CurRow << "," << playerA.CurColumn << "," << playerA.Points << "\n";
+	saveFile << "P2:" << playerB.CurRow << "," << playerB.CurColumn << "," << playerB.Points << "\n";
+	// as in A-MOVES:0/1
+	saveFile << "AM:" << playerAToMove << "\n";
 
 	saveFile.close();
 }
@@ -309,7 +404,6 @@ Cell generateCell(char symbol = '=', int value = -1, int curRow = -1, int curCol
 void generateNeccessaryCells()
 {
 	Cell zeroCell = generateCell('+', 0);
-
 	Cell multZero = generateCell('*', 0);
 	Cell multTwo = generateCell('*', 2);
 	Cell divTwo = generateCell('/', 2);
@@ -404,6 +498,7 @@ bool playerHasValidMoves(Player player)
 
 	int countValid = 0;
 
+	// check how many surrounding cells have a valid move
 	for (int i = -1; i <= 1; i++)
 	{
 		for (int j = -1; j <= 1; j++)
@@ -468,13 +563,61 @@ void printWinner()
 // Clear buffers and trigger file save
 void endGameWithSave(Player* plToMove)
 {
+	if (plToMove == nullptr)
+	{
+		return;
+	}
 	clearConsole();
 	clearInputBuffer();
 
 	saveGridToFile(plToMove == &playerA);
 	cout << "Game saved in local file.";
+}
 
-	deleteGrid(sizeRows);
+void manageMoves(Player* plToMove)
+{
+	if (plToMove == nullptr)
+	{
+		return;
+	}
+	do
+	{
+		printPlayerDetails(*plToMove);
+		int rowTo, colTo;
+
+		cin >> rowTo;
+		if (rowTo == SaveGame)
+		{
+			endGameWithSave(plToMove);
+			return;
+		}
+
+		cin >> colTo;
+		if (colTo == SaveGame)
+		{
+			endGameWithSave(plToMove);
+			return;
+		}
+
+		if (!movePlayerIfPossible(*plToMove, rowTo, colTo) || cin.fail())
+		{
+			cout << "Invalid move, please type a valid spot.\n";
+			clearInputBuffer();
+			continue;
+		}
+		else
+		{
+			if (plToMove == &playerA) plToMove = &playerB;
+
+			else plToMove = &playerA;
+		}
+
+		clearInputBuffer();
+		clearConsole();
+		printGrid();
+	} while (playerHasValidMoves(*plToMove));
+
+	printWinner();
 }
 
 void startProgram()
@@ -483,7 +626,13 @@ void startProgram()
 
 	int gameInitOption;
 	cin >> gameInitOption;
+
 	clearConsole();
+	if (cin.fail())
+	{
+		cout << "Invalid.";
+		return;
+	}
 
 	Player* playerToMove = &playerA;
 
@@ -492,62 +641,26 @@ void startProgram()
 	case NewGame:
 		getFieldSize();
 		generateGameField();
+		setupPlayersDefault();
 		break;
 	case ContinueGame:
-		readGridFromFile(playerToMove);
+		if (!readGridFromFile(playerToMove))
+			return;
 		break;
 	default:
-		cout << "Exited.";
+		cout << "See you later!";
 		return;
 		break;
 	}
+
 	printGrid();
-
-	do
-	{
-		printPlayerDetails(*playerToMove);
-		int rowTo, colTo;
-
-		cin >> rowTo;
-		if (rowTo == -1)
-		{
-			endGameWithSave(playerToMove);
-			return;
-		}
-
-		cin >> colTo;
-		if (colTo == -1)
-		{
-			endGameWithSave(playerToMove);
-			return;
-		}
-
-		if (!movePlayerIfPossible(*playerToMove, rowTo, colTo))
-		{
-			cout << "Invalid move, please type a valid spot.\n";
-			clearInputBuffer();
-			continue;
-		}
-		else
-		{
-			if (playerToMove == &playerA) playerToMove = &playerB;
-
-			else playerToMove = &playerA;
-		}
-
-		clearInputBuffer();
-		clearConsole();
-		printGrid();
-	} while (playerHasValidMoves(*playerToMove));
-
-	printWinner();
+	manageMoves(playerToMove);
 	deleteGrid(sizeRows);
 }
 
 /*
 Останали:
-- валидиране на всички възможни входни полета
 - change commits names
-- deserialize only grid left
-- check for magic numbers
+- finish reading the grid
+- write strchr, atoi, strtok
 */

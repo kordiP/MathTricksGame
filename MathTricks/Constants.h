@@ -22,3 +22,5 @@ const int CELL_VAL_RANGE = 2;
 const int MULTIPLIER_MAX = 4;
 
 const int FILE_LINE_LEN_MAX = 255;
+
+const char SAVE_FILE_NAME[] = "saveFile.txt";
