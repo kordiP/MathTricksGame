@@ -1,9 +1,7 @@
-/*
-*
-* https://github.com/kordiP/MathTricksGame
+/**
 * 
 * Solution to course project # 2
-* Introducution To Programming course
+* Introducution to programming course
 * Faculty of Mathematics and Informatics of Sofia University
 * Winter Semester 2024/2025
 * 
@@ -11,7 +9,7 @@
 * @idnumber 5MI0600508
 * @compiler VC
 * 
-* file for main game logic
+* <file for main game logic>
 * 
 */
 
@@ -151,32 +149,6 @@ void setupPlayersDefault()
 	setPlayer(playerB, PLAYER_B_COLOR, sizeRows - 1, sizeColumns - 1, PLAYER_B_NAME);
 }
 
-char* customStrtok(char* str, char delimiter) {
-	static char* currentPos = nullptr;
-
-	if (str != nullptr) {
-		currentPos = str;  // Initialize the current position
-	}
-
-	if (currentPos == nullptr || *currentPos == '\0') {
-		return nullptr;  // No more tokens
-	}
-
-	char* token = currentPos;
-
-	// Find the next delimiter or end of the string
-	while (*currentPos != '\0' && *currentPos != delimiter) {
-		currentPos++;
-	}
-
-	if (*currentPos != '\0') {
-		*currentPos = '\0';  // Replace delimiter with null terminator
-		currentPos++;  // Move past the delimiter
-	}
-
-	return token;
-}
-
 bool readGridFromFile(Player* plToMove) {
 	ifstream saveFile(SAVE_FILE_NAME);
 	char line[FILE_LINE_LEN_MAX] = {};
@@ -191,15 +163,15 @@ bool readGridFromFile(Player* plToMove) {
 
 	while (saveFile.getline(line, FILE_LINE_LEN_MAX)) {
 		if (line[0] == 'G' && line[1] == 'S') {
-			char* dataStart = strchr(line, ':');
+			char* dataStart = charInString(line, ':');
 			if (dataStart) {
 				dataStart++; // Move past ':'
 				char* token1 = dataStart;
-				char* token2 = strchr(token1, ',');
+				char* token2 = charInString(token1, ',');
 				*token2 = '\0';
 
-				sizeRows = atoi(token1);
-				sizeColumns = atoi(token2 + 1);
+				sizeRows = asciiToInt(token1);
+				sizeColumns = asciiToInt(token2 + 1);
 
 				initializeGrid(sizeRows, sizeColumns);
 			}

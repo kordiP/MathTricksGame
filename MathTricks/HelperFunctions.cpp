@@ -1,9 +1,7 @@
-/*
+/**
 *
-* https://github.com/kordiP/MathTricksGame
-* 
 * Solution to course project # 2
-* Introducution To Programming course
+* Introducution to programming course
 * Faculty of Mathematics and Informatics of Sofia University
 * Winter Semester 2024/2025
 *
@@ -11,7 +9,7 @@
 * @idnumber 5MI0600508
 * @compiler VC
 *
-* file for helper function
+* <file for helper functions>
 *
 */
 
@@ -129,7 +127,7 @@ char* stringSplit(char* str, char delimiter)
 	}
 
 	if (*currentPos != '\0') {
-		*currentPos = '\0';  // Replace delimiter with null terminator
+		*currentPos = '\0';  // Replace delimiter with terminator zero
 		currentPos++;  // Move past the delimiter
 	}
 
