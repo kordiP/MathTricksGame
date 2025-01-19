@@ -13,6 +13,8 @@
 * 
 */
 
+// Link to Repo -> https://github.com/kordiP/MathTricksGame
+
 #include <iomanip> // setw io
 #include <windows.h> // console colors
 #include <cmath> // for sqrt
