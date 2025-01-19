@@ -26,11 +26,7 @@ int genRandomNum(int lowLimit, int highLimit)
 		return lowLimit;
 	}
 
-	random_device rdNum;
-	mt19937 genNum(rdNum());
-	uniform_int_distribution<> distNum(lowLimit, highLimit);
-
-	return distNum(genNum);
+	return lowLimit + rand() % (highLimit - lowLimit + 1);
 }
 
 int maxNum(int num1, int num2)
