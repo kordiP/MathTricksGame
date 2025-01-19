@@ -596,6 +596,7 @@ void manageMoves(Player* plToMove)
 
 void startProgram()
 {
+	srand((int)time(0));
 	printStartMenu();
 
 	int gameInitOption;
